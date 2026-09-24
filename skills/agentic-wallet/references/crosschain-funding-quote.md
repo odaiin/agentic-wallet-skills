@@ -16,6 +16,8 @@ This workflow is **read-only and quote-only**:
 - no bridge, swap, approval, preparation, submission, or fund movement;
 - the AssetFare server never signs or submits;
 - stop after returning the quote and comparison data.
+- validate `continuation_v3` but keep it unranked; do not generate
+  `approval_v3`, collect wallets, select a mode, or call prepare/session.
 
 If the user later wants to execute a route, explain that the Agentic Wallet CLI
 does not execute this AssetFare route. Execution requires a separate,
@@ -192,10 +194,85 @@ Before presenting the result, verify all of the following:
 18. `execution.supported` is `true`,
     `execution.first_unsigned_action_supported` is a boolean, and
     `execution.future_actions_require_verified_receipts` is `true`.
+19. `continuation_v3` is present with version exactly
+    `assetfare-quote-bound-continuation-v3`, enforcement
+    `server_enforced_quote_binding`, selection status `unranked_candidate`,
+    `automatic_selection_forbidden: true`,
+    `caller_approved_boolean_is_not_human_proof: true`, and
+    `legacy_handoff_enforcement: legacy_advisory`. Reject extra fields.
+20. Its `quote_id`, intent, TTL, step count, minimum output, summary hash,
+    payload hash, and fingerprint claim are bound to the same quote. Recompute
+    the SHA-256 values using UTF-8 sorted-key compact JSON; numeric fingerprint
+    claims are plain non-exponent decimal strings. Both the top-level
+    continuation and `quote_fingerprint_claim` must contain
+    `quote_payload_sha256_spec` with this exact literal (no abbreviation):
+
+    `sha256(AssetFare typed-canonical-v1 bytes of the quote without continuation_v3 after exact base-unit substitution: n=null; t/f=boolean; d=<IEEE-754 binary64 big-endian 16 lowercase hex> for each finite JSON number; s=<UTF-8 byte length>:<Unicode scalar text with lone surrogates forbidden>; a=<count>:[items]; o=<count>:{UTF-8-byte-sorted string-key/value pairs}; every non-substituted integral JSON number must be within +/-9007199254740991; substituted paths are intent.estimated_input_base, route.input_base, route.expected_output_base, route.minimum_output_base, and every route.steps[i].expected_input_base/floor_input_base/expected_output_base/minimum_output_base from direct_route_summary exact decimal strings)`
+
+    To recompute `quote_payload_sha256`, clone the quote and remove
+    `continuation_v3`; replace `intent.estimated_input_base`, route-level input /
+    expected-output / minimum-output, and every raw route step's
+    `expected_input_base`, `floor_input_base`, `expected_output_base`, and
+    `minimum_output_base` with the corresponding exact decimal strings from the
+    already-validated `direct_route_summary`. Then encode typed-canonical-v1
+    bytes: `n` for null; `t` / `f` for booleans; `d` plus the IEEE-754 binary64
+    big-endian 16-character lowercase hex for each finite JSON number; `s` plus
+    UTF-8 byte length, `:`, and the raw UTF-8 bytes for strings; and count-prefixed
+    bracket/brace encodings for arrays and UTF-8-byte-key-sorted objects. Preserve
+    number versus string and preserve negative zero; JSON numeric `1` and `1.0`
+    intentionally have the same encoding. Reject every non-substituted integer
+    outside `+/-9007199254740991` (including integral floating-point values) and
+    reject lone UTF-16 surrogates in string values or object keys, including in
+    hostile provider/evidence fields.
+    This substitution is mandatory for raw base-unit integers above JavaScript's
+    `2^53` safe-integer limit. SHA-256 the typed bytes, and reject any mismatch,
+    missing/wrong spec literal, expired binding, or signing/submission claim.
+
+    A Core-generated interoperability fixture is included at
+    `references/fixtures/core-241-unsafe-integer-quote.json`; its expected
+    payload hash is
+    `f071dead7a91a993e72ec086ac7948e801880bf24cda916ad0761e962249f17c`.
+    A conforming JavaScript check must observe `amount_usd` as numeric `1000`,
+    the parsed duplicated raw input as `9007199254740992`, and the summary's
+    exact string as `9007199254740993`, yet still produce that hash.
+21. `required_wallet_chains` exactly equals the unique sorted chain names in the
+    validated ordered path. `event_signer_public_required` is true exactly when
+    a Circle CCTP step originates on Solana. The input bounds equal the quoted
+    input and may not be weakened; the minimum output equals the route minimum.
+22. A one-step route allows `one_shot` or `session` and recommends
+    `one_shot_or_session`. A multi-step route allows and recommends only
+    `session`. The descriptor remains unranked and is not action authority.
 
 If a required field is missing, has the wrong type, is non-finite, or fails any
 check above, reject the entire quote. Do not report partial values, infer a
 replacement, or suggest proceeding.
+
+## If the User Later Chooses to Act
+
+This skill still stops at the quote. Explain the separate caller-controlled
+sequence exactly, without performing it:
+
+1. Obtain fresh, comparable quotes at the user's actual amount.
+2. The caller explicitly selects one unranked candidate locally. Never select
+   automatically and never treat `caller_approved: true` by itself as proof of
+   human approval.
+3. Copy the selected quote's `quote_id`, `quote_fingerprint`,
+   `direct_route_summary_sha256`, exact `maximum_input_base`, and exact-or-
+   stronger `minimum_output_base` into a nine-field `approval_v3`, add a
+   caller-generated 8–128 character `idempotency_key`, and choose one allowed
+   `selected_mode`.
+4. Invoke exactly one path: `one_shot` **or** `session`, never both. Multi-step
+   routes are session-only. A session uses a caller-generated ≥256-bit
+   `X-AssetFare-Session-Token`; its raw value must never be logged or returned,
+   and the approval's idempotency key must match session creation.
+5. The separate execution client collects only the exact public wallets and
+   event signer named by the descriptor. AssetFare returns unsigned actions;
+   the caller verifies, signs, and submits them. Any expiry, path/provider
+   change, weaker bound, replay, or restart miss requires a fresh quote and new
+   explicit selection before any action is created.
+
+Do not implement these steps with Agentic Wallet CLI commands: this reference
+has no AssetFare prepare/session operation and remains quote-only.
 
 ## Presenting the Result
 
@@ -238,4 +315,5 @@ not fabricate a competitor, fee, output, rank, or best-price conclusion.
 
 - Agent guide: https://assetfare.dev/agents/
 - Quote-only OpenAPI: https://assetfare.dev/openapi-quote-only.json
+- Full REST 2.4 OpenAPI: https://api.assetfare.dev/v2/openapi
 - Security: https://assetfare.dev/security/

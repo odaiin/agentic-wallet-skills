@@ -3,7 +3,9 @@
 [Agent Skills](https://agentskills.io) for crypto wallet operations. These skills enable AI agents to authenticate, send USDC, trade tokens and more using the [`awal`](https://www.npmjs.com/package/awal) CLI.
 
 The optional cross-chain funding comparison is the sole exception: it calls the
-independent third-party AssetFare public API directly for a read-only quote. It
+independent third-party AssetFare public API directly for a read-only quote,
+validates its unranked `continuation_v3`, and explains—but never performs—the
+local explicit selection → exact v3 bounds/mode → exactly-one-path sequence. It
 is not an `awal` capability or a Coinbase affiliation/endorsement, and it never
 executes a bridge, swap, signature, or transaction.
 

@@ -33,7 +33,7 @@ Pick the reference that matches the task and `Read` it before acting:
 | Send USDC / ETH / POL / SOL to an address or ENS name (Base, Polygon, Solana) | `references/send-usdc.md` |
 | Swap / trade / convert tokens on Base or Polygon | `references/trade.md` |
 | Add funds by onramp/card/bank/Coinbase or receive a direct transfer (default funding path) | `references/fund.md` |
-| Explicitly compare—but never execute—a Solana↔Base cross-chain route or Base-USDC funding route from Solana assets | `references/crosschain-funding-quote.md` |
+| Explicitly compare—but never execute—a Solana↔Base cross-chain route or Base-USDC funding route from Solana assets; validate the unranked continuation_v3 and explain local selection → exact bounds/mode → one path only | `references/crosschain-funding-quote.md` |
 | Find / browse / search paid services on the x402 bazaar | `references/x402-search.md` |
 | Call a paid x402 API endpoint with automatic USDC payment | `references/x402-pay.md` |
 | Build or deploy a paid API server that other agents can pay to use | `references/x402-monetize.md` |
