@@ -152,11 +152,44 @@ Before presenting the result, verify all of the following:
 9. `route.route` exactly equals `<from_chain>:<from_token>-><to_chain>:<to_token>`;
    `route.steps` is a nonempty array of objects; `route.quote_latency_ms` is a
    nonnegative integer.
-10. `route.server_signing` and `route.server_submission` are `false`.
-11. `risk.non_atomic` is a boolean,
+10. `direct_route_summary` is present and has version exactly
+    `assetfare-direct-route-summary-v1`. Reject unknown or extra top-level or
+    step fields rather than silently ignoring them.
+11. Its `from`, `to`, and `route` exactly match the request and `route.route`;
+    `mode` matches `route.mode`; `server_signing`, `server_submission`,
+    `route_aggregator_used`, and every step's `aggregator_api_used` are `false`.
+    `route_aggregator_used: false` is scoped to AssetFare's engine and does not
+    mean that every provider avoids internal liquidity sourcing.
+12. `direct_route_summary.steps` contains 1–8 entries, `step_count` equals its
+    length, indices are contiguous from zero, the first `from` and last `to`
+    match the quote, and adjacent `chain:asset` endpoints are continuous.
+    Expected/minimum input/output base units must be positive decimal strings;
+    each step's output strings must equal the next step's corresponding input
+    strings, and minimum must not exceed expected.
+13. Each summary provider is exactly one of `raydium_clmm`,
+    `orca_whirlpool`, `uniswap_v3`, `circle_cctp`,
+    `paxos_usdg_layerzero_oft`, or `across_intent_bridge`. Swap providers must
+    say `action: swap`; bridge providers must say `action: bridge`; the provider
+    order, index, action kind, and per-step fee must match `route.steps`.
+14. Exactly one summary step has `assetfare_fee_bps: 1`, all others have zero,
+    and that step's index equals `fee_collection_step_index` and the sole value
+    in `offer.fee_collection_steps`. Top-level and offer-level AssetFare fee
+    values must both be 1bp.
+15. With no Across step, classification must be `direct_protocol_only`, all
+    steps must have `direct_protocol: true`, and both external-intent flags and
+    `provider_internal_dex_aggregation_possible` must be `false`. With exactly
+    one `across_intent_bridge` Robinhood-ingress step, classification must be
+    `external_intent`, that step must set `direct_protocol: false` and
+    `external_intent_protocol: true`, and both top-level external-intent flags
+    and `provider_internal_dex_aggregation_possible` must be `true`. Across may
+    source or aggregate destination liquidity internally; do not describe that
+    path as direct-protocol-only.
+16. `route.server_signing` and `route.server_submission` are `false`.
+17. `risk.non_atomic` is a boolean,
     `risk.fresh_quote_required_each_step` is `true`, and both risk-level server
-    signing/submission values are `false`.
-12. `execution.supported` is `true`,
+    signing/submission values are `false`. Its external-intent and
+    provider-internal aggregation flags must equal the validated summary.
+18. `execution.supported` is `true`,
     `execution.first_unsigned_action_supported` is a boolean, and
     `execution.future_actions_require_verified_receipts` is `true`.
 
@@ -173,6 +206,12 @@ Report:
 - expected and minimum receive;
 - fee in basis points;
 - estimated time and step count;
+- the validated ordered provider path as `from -> provider/action -> to`, the
+  exact step carrying the 1bp fee, and whether classification is
+  `direct_protocol_only` or `external_intent`;
+- for `external_intent`, say explicitly that the path uses Across for
+  Robinhood ingress and provider-internal liquidity sourcing or aggregation
+  remains possible;
 - whether the route is non-atomic;
 - quote expiry/freshness;
 - a clear statement that no funds moved.
