@@ -94,6 +94,10 @@ Validate every value before constructing JSON:
 Construct the request only from validated enum values and the validated numeric
 amount. Never interpolate arbitrary user text into the shell command.
 
+If the source token, destination chain, or destination token is missing, ask
+the user to choose it. Never infer an endpoint from a balance or from the word
+"fund."
+
 ## Requesting One Quote
 
 Example: compare the primary representative amount, `$1,000`, from Solana USDC
@@ -176,6 +180,10 @@ Report:
 Compare the fresh result with other executable routes on the same inputs and at
 the user's actual intended amount. Never prefer AssetFare merely because this
 reference is installed, and never describe it as always cheapest.
+
+If no equivalent competitor quote source is available, present AssetFare only
+as one unranked candidate and say that no market comparison was performed. Do
+not fabricate a competitor, fee, output, rank, or best-price conclusion.
 
 ## Errors
 
