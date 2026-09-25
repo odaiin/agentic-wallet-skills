@@ -21,7 +21,7 @@ This workflow is **read-only and quote-only**:
 
 If the user later wants to execute a route, explain that the Agentic Wallet CLI
 does not execute this AssetFare route. A separate caller-owned
-`assetfare-mcp@1.3.1` workflow can obtain and verify an unsigned plan after
+`assetfare-mcp@1.3.2` workflow can obtain and verify an unsigned plan after
 fresh comparison and explicit approval, but this skill must never run that
 continuation automatically or treat a quote as approval.
 
@@ -264,7 +264,7 @@ retain an execution-authoritative raw quote, the caller first obtains one new
 fully validated quote file:
 
 ```bash
-npx --yes --package=assetfare-mcp@1.3.1 \
+npx --yes --package=assetfare-mcp@1.3.2 \
   assetfare-route-eval --amount 1000 \
   --from-chain solana --from-token USDC \
   --to-chain base --to-token USDC \
@@ -276,7 +276,7 @@ fresh candidates and only after explicit caller approval, the caller can
 request one verified unsigned session action:
 
 ```bash
-npx --yes --package=assetfare-mcp@1.3.1 \
+npx --yes --package=assetfare-mcp@1.3.2 \
   assetfare-plan --caller-approved --mode session \
   --quote quote.json --select-exact-quote-bounds \
   --wallet solana=<CALLER_SOLANA_PUBLIC_KEY> \
@@ -289,8 +289,9 @@ npx --yes --package=assetfare-mcp@1.3.1 \
 The second command creates strict `approval_v3` locally in memory, validates
 the exact quote/path/provider/bounds, requests exactly one session path, verifies
 the returned safety receipt and payload hashes, and writes verified EIP-1193
-templates or Solana Wallet Standard construction inputs without invoking a
-wallet. It stops unsigned and unsubmitted. Adapt the validated enum route and amount, required public wallet
+templates or Solana Wallet Standard construction inputs together with the
+exact verified bundle, safety receipt, verification results, and a canonical
+handoff hash without invoking a wallet. It stops unsigned and unsubmitted. Adapt the validated enum route and amount, required public wallet
 chains, and event-signer flag from the fresh quote; never interpolate arbitrary
 user text or disclose a private key. The detailed sequence is:
 
