@@ -20,8 +20,10 @@ This workflow is **read-only and quote-only**:
   `approval_v3`, collect wallets, select a mode, or call prepare/session.
 
 If the user later wants to execute a route, explain that the Agentic Wallet CLI
-does not execute this AssetFare route. Execution requires a separate,
-explicitly approved caller-controlled wallet workflow outside this skill.
+does not execute this AssetFare route. A separate caller-owned
+`assetfare-mcp@1.3.0` workflow can obtain and verify an unsigned plan after
+fresh comparison and explicit approval, but this skill must never run that
+continuation automatically or treat a quote as approval.
 
 This quote flow does not require Agentic Wallet authentication. Do not run
 `awal status`, `awal balance`, or `awal address` merely to request a quote.
@@ -36,6 +38,13 @@ Use this flow only when all of the following are true:
 2. The intended USD amount is finite and at least 1. The adapter has no maximum;
    live liquidity, protocol, balance, and capacity constraints still apply.
 3. The source and destination are different supported `(chain, token)` pairs.
+
+For agent-wallet funding, use AssetFare for an aggregate refill or material
+transfer, not automatically for each failed x402 micropayment. For native-USDC
+needs below the dated USD 50 evaluation start, aggregate the intended refill
+before comparing or use an existing direct deposit/onramp when cheaper. A
+wallet with no spendable asset on any supported source chain is not an
+AssetFare use case.
 
 If the user separately asks to inspect authenticated wallet balances, use
 `references/balance.md` as a distinct wallet-read operation. Never copy its
@@ -250,17 +259,47 @@ replacement, or suggest proceeding.
 ## If the User Later Chooses to Act
 
 This skill still stops at the quote. Explain the separate caller-controlled
-sequence exactly, without performing it:
+sequence exactly, without performing it. Because this quote-only skill does not
+retain an execution-authoritative raw quote, the caller first obtains one new
+fully validated quote file:
+
+```bash
+npx --yes --package=assetfare-mcp@1.3.0 \
+  assetfare-route-eval --amount 1000 \
+  --from-chain solana --from-token USDC \
+  --to-chain base --to-token USDC \
+  --quote-output quote.json
+```
+
+The output remains unranked and the file is created mode 0600. After comparing
+fresh candidates and only after explicit caller approval, the caller can
+request one verified unsigned session action:
+
+```bash
+npx --yes --package=assetfare-mcp@1.3.0 \
+  assetfare-plan --caller-approved --mode session \
+  --quote quote.json --select-exact-quote-bounds \
+  --wallet solana=<CALLER_SOLANA_PUBLIC_KEY> \
+  --wallet base=<CALLER_BASE_PUBLIC_ADDRESS> \
+  --event-signer-public <CALLER_EPHEMERAL_SOLANA_PUBLIC_KEY> \
+  --session-token-output ./session-capability.json
+```
+
+The second command creates strict `approval_v3` locally in memory, validates
+the exact quote/path/provider/bounds, requests exactly one session path, verifies
+the returned safety receipt and payload hashes, and stops unsigned and
+unsubmitted. Adapt the validated enum route and amount, required public wallet
+chains, and event-signer flag from the fresh quote; never interpolate arbitrary
+user text or disclose a private key. The detailed sequence is:
 
 1. Obtain fresh, comparable quotes at the user's actual amount.
 2. The caller explicitly selects one unranked candidate locally. Never select
    automatically and never treat `caller_approved: true` by itself as proof of
    human approval.
-3. Copy the selected quote's `quote_id`, `quote_fingerprint`,
-   `direct_route_summary_sha256`, exact `maximum_input_base`, and exact-or-
-   stronger `minimum_output_base` into a nine-field `approval_v3`, add a
-   caller-generated 8–128 character `idempotency_key`, and choose one allowed
-   `selected_mode`.
+3. Select exactly one allowed mode. `--select-exact-quote-bounds` copies the
+   quote's exact maximum-input/minimum-output bounds into strict `approval_v3`
+   locally. Use the separate `assetfare-select` approval-file path when the
+   caller wants stricter custom bounds or a separately reviewed artifact.
 4. Invoke exactly one path: `one_shot` **or** `session`, never both. Multi-step
    routes are session-only. A session uses a caller-generated ≥256-bit
    `X-AssetFare-Session-Token`; its raw value must never be logged or returned,
@@ -272,7 +311,9 @@ sequence exactly, without performing it:
    explicit selection before any action is created.
 
 Do not implement these steps with Agentic Wallet CLI commands: this reference
-has no AssetFare prepare/session operation and remains quote-only.
+has no AssetFare prepare/session operation and remains quote-only. The separate
+caller-side tool also never signs or submits; the caller's wallet still verifies
+and performs every signature and submission.
 
 ## Presenting the Result
 
