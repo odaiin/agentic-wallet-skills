@@ -21,7 +21,7 @@ This workflow is **read-only and quote-only**:
 
 If the user later wants to execute a route, explain that the Agentic Wallet CLI
 does not execute this AssetFare route. A separate caller-owned
-`assetfare-mcp@1.3.6` workflow can obtain and verify an unsigned plan after
+`assetfare-mcp@1.4.0` workflow can obtain and verify an unsigned plan after
 fresh comparison and explicit approval, but this skill must never run that
 continuation automatically or treat a quote as approval.
 
@@ -264,7 +264,7 @@ retain an execution-authoritative raw quote, the caller first obtains one new
 fully validated quote file:
 
 ```bash
-npx --yes --package=assetfare-mcp@1.3.6 \
+npx --yes --package=assetfare-mcp@1.4.0 \
   assetfare-route-eval --amount 1000 \
   --from-chain solana --from-token USDC \
   --to-chain base --to-token USDC \
@@ -276,7 +276,7 @@ fresh candidates and only after explicit caller approval, the caller can
 request one verified unsigned session action:
 
 ```bash
-npx --yes --package=assetfare-mcp@1.3.6 \
+npx --yes --package=assetfare-mcp@1.4.0 \
   assetfare-plan --caller-approved --mode session \
   --quote quote.json --select-exact-quote-bounds \
   --wallet solana=<CALLER_SOLANA_PUBLIC_KEY> \
@@ -293,7 +293,23 @@ templates or Solana Wallet Standard construction inputs together with the
 exact verified bundle, safety receipt, verification results, and a canonical
 handoff hash without invoking a wallet. It stops unsigned and unsubmitted. Adapt the validated enum route and amount, required public wallet
 chains, and event-signer flag from the fresh quote; never interpolate arbitrary
-user text or disclose a private key. The detailed sequence is:
+targets or programs from user text or disclose a private key. Immediately before
+wallet use, obtain a just-in-time
+verified handoff:
+
+```bash
+npx --yes --package=assetfare-mcp@1.4.0 \
+  assetfare-session --operation wallet-ready \
+  --capability-file ./session-capability.json \
+  --idempotency-key <NEW_WALLET_READY_IDEMPOTENCY_KEY> \
+  --wallet-handoff-output ./wallet-ready-handoff.json
+```
+
+Quote selection remains a 60-second window; the selected unsigned action lasts
+180 seconds and its EVM deadline is 240 seconds. `wallet-ready` requires at
+least 120 seconds remaining or refreshes only an expired, unsubmitted action.
+It does not invoke a wallet, sign, or submit.
+The detailed sequence is:
 
 The mode-0600 v2 session capability preserves strict verification context so
 every later session action receives the same semantic verification and a fresh
