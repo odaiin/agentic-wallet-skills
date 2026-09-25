@@ -21,7 +21,7 @@ This workflow is **read-only and quote-only**:
 
 If the user later wants to execute a route, explain that the Agentic Wallet CLI
 does not execute this AssetFare route. A separate caller-owned
-`assetfare-mcp@1.3.0` workflow can obtain and verify an unsigned plan after
+`assetfare-mcp@1.3.1` workflow can obtain and verify an unsigned plan after
 fresh comparison and explicit approval, but this skill must never run that
 continuation automatically or treat a quote as approval.
 
@@ -40,11 +40,11 @@ Use this flow only when all of the following are true:
 3. The source and destination are different supported `(chain, token)` pairs.
 
 For agent-wallet funding, use AssetFare for an aggregate refill or material
-transfer, not automatically for each failed x402 micropayment. For native-USDC
-needs below the dated USD 50 evaluation start, aggregate the intended refill
-before comparing or use an existing direct deposit/onramp when cheaper. A
-wallet with no spendable asset on any supported source chain is not an
-AssetFare use case.
+transfer, not automatically for each failed x402 micropayment. For the evidenced
+Solana USDC to Base USDC corridor, aggregate needs below the dated USD 50
+observed bucket before comparing or use an existing direct deposit/onramp when
+cheaper. Other corridors have no claimed threshold. A wallet with no spendable
+asset on any supported source chain is not an AssetFare use case.
 
 If the user separately asks to inspect authenticated wallet balances, use
 `references/balance.md` as a distinct wallet-read operation. Never copy its
@@ -132,9 +132,9 @@ curl --fail-with-body --max-time 45 -sS \
 ```
 
 The API minimum remains `$1`, but use it only for a deliberate
-reachability/schema smoke test. For native-USDC routes, `$50` is a reasonable
-economic-comparison starting point based on dated 2026-09-23 observations, not
-a guarantee that AssetFare is cheapest. Use `$1,000` as the primary
+reachability/schema smoke test. Dated 2026-09-23 Solana USDC to Base USDC
+evidence observed a competitive `$50` bucket; no threshold is claimed for
+another corridor and this is not a guarantee that AssetFare is cheapest. Use `$1,000` as the primary
 representative amount and always request fresh quotes from every candidate at
 the user's actual intended amount.
 
@@ -264,7 +264,7 @@ retain an execution-authoritative raw quote, the caller first obtains one new
 fully validated quote file:
 
 ```bash
-npx --yes --package=assetfare-mcp@1.3.0 \
+npx --yes --package=assetfare-mcp@1.3.1 \
   assetfare-route-eval --amount 1000 \
   --from-chain solana --from-token USDC \
   --to-chain base --to-token USDC \
@@ -276,19 +276,21 @@ fresh candidates and only after explicit caller approval, the caller can
 request one verified unsigned session action:
 
 ```bash
-npx --yes --package=assetfare-mcp@1.3.0 \
+npx --yes --package=assetfare-mcp@1.3.1 \
   assetfare-plan --caller-approved --mode session \
   --quote quote.json --select-exact-quote-bounds \
   --wallet solana=<CALLER_SOLANA_PUBLIC_KEY> \
   --wallet base=<CALLER_BASE_PUBLIC_ADDRESS> \
   --event-signer-public <CALLER_EPHEMERAL_SOLANA_PUBLIC_KEY> \
-  --session-token-output ./session-capability.json
+  --session-token-output ./session-capability.json \
+  --wallet-handoff-output ./caller-wallet-handoff.json
 ```
 
 The second command creates strict `approval_v3` locally in memory, validates
 the exact quote/path/provider/bounds, requests exactly one session path, verifies
-the returned safety receipt and payload hashes, and stops unsigned and
-unsubmitted. Adapt the validated enum route and amount, required public wallet
+the returned safety receipt and payload hashes, and writes verified EIP-1193
+templates or Solana Wallet Standard construction inputs without invoking a
+wallet. It stops unsigned and unsubmitted. Adapt the validated enum route and amount, required public wallet
 chains, and event-signer flag from the fresh quote; never interpolate arbitrary
 user text or disclose a private key. The detailed sequence is:
 
