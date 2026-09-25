@@ -21,7 +21,7 @@ This workflow is **read-only and quote-only**:
 
 If the user later wants to execute a route, explain that the Agentic Wallet CLI
 does not execute this AssetFare route. A separate caller-owned
-`assetfare-mcp@1.4.0` workflow can obtain and verify an unsigned plan after
+`assetfare-mcp@1.5.1` workflow can obtain and verify an unsigned plan after
 fresh comparison and explicit approval, but this skill must never run that
 continuation automatically or treat a quote as approval.
 
@@ -264,7 +264,7 @@ retain an execution-authoritative raw quote, the caller first obtains one new
 fully validated quote file:
 
 ```bash
-npx --yes --package=assetfare-mcp@1.4.0 \
+npx --yes --package=assetfare-mcp@1.5.1 \
   assetfare-route-eval --amount 1000 \
   --from-chain solana --from-token USDC \
   --to-chain base --to-token USDC \
@@ -276,7 +276,7 @@ fresh candidates and only after explicit caller approval, the caller can
 request one verified unsigned session action:
 
 ```bash
-npx --yes --package=assetfare-mcp@1.4.0 \
+npx --yes --package=assetfare-mcp@1.5.1 \
   assetfare-plan --caller-approved --mode session \
   --quote quote.json --select-exact-quote-bounds \
   --wallet solana=<CALLER_SOLANA_PUBLIC_KEY> \
@@ -298,7 +298,7 @@ wallet use, obtain a just-in-time
 verified handoff:
 
 ```bash
-npx --yes --package=assetfare-mcp@1.4.0 \
+npx --yes --package=assetfare-mcp@1.5.1 \
   assetfare-session --operation wallet-ready \
   --capability-file ./session-capability.json \
   --idempotency-key <NEW_WALLET_READY_IDEMPOTENCY_KEY> \
@@ -309,6 +309,16 @@ Quote selection remains a 60-second window; the selected unsigned action lasts
 180 seconds and its EVM deadline is 240 seconds. `wallet-ready` requires at
 least 120 seconds remaining or refreshes only an expired, unsubmitted action.
 It does not invoke a wallet, sign, or submit.
+
+An external agent that already controls its own wallet may continue under a
+separate local caller policy with `assetfare-agent-runner --preflight`, then run
+the same command without `--preflight` only when that policy authorizes automatic
+execution. The local policy is validated against
+`https://assetfare.dev/schemas/caller-owned-execution-policy-v1.json`; it binds
+input, final receive, native gas, Solana fee/rent, expiry and transaction-count
+caps. The adapter and keys stay in the caller process at
+`caller_wallet_adapter_only`. AssetFare's remote MCP/A2A service has no runner,
+key, signing or submission tool.
 The detailed sequence is:
 
 The mode-0600 v2 session capability preserves strict verification context so
