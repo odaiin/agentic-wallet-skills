@@ -22,7 +22,7 @@ This skill is read-only and quote-only:
 - stop after reporting the validated quote and state clearly that no funds moved.
 
 If the user later wants to act, explain that a separate caller-owned
-`assetfare-mcp@1.21.5` workflow can verify an unsigned plan after a new quote and
+`assetfare-mcp@1.21.6` workflow can verify an unsigned plan after a new quote and
 explicit approval. Do not run that continuation from this skill.
 
 ## Discovering support
@@ -85,7 +85,7 @@ Fail closed unless all of these checks pass:
    threshold.
 
 Do not report partial output after a validation failure. The maintained
-`assetfare-mcp@1.21.5` evaluator is the reference implementation for the hash
+`assetfare-mcp@1.21.6` evaluator is the reference implementation for the hash
 and contract checks; this skill must not weaken those checks with an ad-hoc
 parser.
 
